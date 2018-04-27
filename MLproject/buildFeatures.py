@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 from sklearn import preprocessing
 from parameters import *
+from scipy import fftpack
 
 def buildFeatureSpace(img, pca, scaler):
 	features = []
@@ -11,7 +12,7 @@ def buildFeatureSpace(img, pca, scaler):
 		for x in range(int(n), int(image.H-n)):
 			for y in range(int(n), int(image.W-n)):
 				features.append(getFeatureVector(image.L, image.Lg1, image.Lg2, x, y))
-	
+
 	# each row specifies an observation
 	features = np.array(features)
 
@@ -22,10 +23,12 @@ def buildFeatureSpace(img, pca, scaler):
 
 def getFeatureVector(imgL, imgLg1, imgLg2, x, y):
 	fft_features = np.array(fftFromPixel(imgL, x, y))
+	dct_features = np.array(dctFromPixel(imgL, x, y))
+	dst_features = np.array(dstFromPixel(imgL, x, y))
 	surf_features = np.array(surfFromPixel(imgL, imgLg1, imgLg2, x, y))
 	dev, mean = computeStdDevAndMean(imgL, x, y)
 	extra_features = np.array([dev, mean, imgL[x, y]])
-	return np.concatenate((surf_features, fft_features, extra_features))
+	return np.concatenate((surf_features, fft_features, extra_features, dct_features, dst_features))
 
 def surfFromPixel(imgL, imgLg1, imgLg2, x, y):
 	surf = cv2.xfeatures2d.SURF_create()
@@ -48,6 +51,18 @@ def fftFromPixel(imgL, x, y):
 	imgL = imgL.astype(np.float)
 	neighbors = findNeighbors(imgL, x, y).flatten()
 	feature = np.abs(np.fft.fft(neighbors))
+	return feature
+
+def dctFromPixel(imgL, x, y):
+	imgL = imgL.astype(np.float)
+	neighbors = findNeighbors(imgL, x, y).flatten()
+	feature = np.abs(fftpack.dct(neighbors))
+	return feature
+
+def dstFromPixel(imgL, x, y):
+	imgL = imgL.astype(np.float)
+	neighbors = findNeighbors(imgL, x, y).flatten()
+	feature = np.abs(fftpack.dst(neighbors))
 	return feature
 
 def findNeighbors(img, x, y, size = surfWindow):
